@@ -14,7 +14,7 @@ It has some cli helper
 + libuuid
 
 ```
-gcc src/cli.c -o cli -larchive -luuid
+gcc cmd/cli.c -o bin/cli -larchive -luuid
 ```
 
 ## compile server
@@ -22,8 +22,13 @@ gcc src/cli.c -o cli -larchive -luuid
 - dependencies:
 
 + libarchive
++ libuuid
 + json-c (soon)
 + microhttpd
+
+```
+gcc cmd/server.c -o bin/server -larchive -luuid -lmicrohttpd
+```
 
 ## Uploading
 
