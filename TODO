@@ -1,0 +1,3 @@
+- extract to directory named with /[const-prefix]/[tar file]
+- create routes to view based on /[const-pprefix] to view rendered md
+- json resp for upload
