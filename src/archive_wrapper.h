@@ -8,8 +8,9 @@
 #include<errno.h>
 #include<string.h>
 
+
 int gzip(int input_c, const char** input_files, const char* output_file);
-int extract_archive(const char* input_file);
+int extract_archive(const char* input_file, const char* output_dir);
 int copy_data(struct archive* arc_reader, struct archive* arc_writer);
 
 
@@ -64,9 +65,9 @@ int gzip(int input_c, const char** input_files, const char* output_file) {
 
 // extract_archive accepts an input_file
 // extract the contents as is
-int extract_archive(const char* input_file) {
+int extract_archive(const char* input_file, const char* output_dir) {
     int flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM | ARCHIVE_EXTRACT_ACL | ARCHIVE_EXTRACT_FFLAGS;
-
+    // create folder based on input_files
     struct archive *arc_reader = archive_read_new();
     archive_read_support_format_all(arc_reader);
     archive_read_support_filter_all(arc_reader);
@@ -93,6 +94,30 @@ int extract_archive(const char* input_file) {
         if (ret < ARCHIVE_WARN){
             return ret;
         }
+
+        const char *existing_entry_loc = archive_entry_pathname(entry);
+
+        char *_existing_loc = strdup(existing_entry_loc);
+
+        size_t outpath_st = strlen(input_file) + strlen(_existing_loc) + strlen(output_dir) + 4;
+
+        char output_loc[outpath_st];
+
+        if (_existing_loc == NULL) {
+            fprintf(stderr, "failed duplicating existing entry loc\n");
+            return -1;
+        }
+
+        ret = sprintf(output_loc, "%s/%s/%s", output_dir, input_file, _existing_loc);
+        if (ret < 0) {
+            fprintf(stderr, "failed formating output loc\n");
+            return ret;
+        }
+
+        printf("overiding entry loc from: %s to: %s\n", _existing_loc, output_loc);
+
+        archive_entry_set_pathname(entry, output_loc);
+
         ret = archive_write_header(arc_writer, entry);
         if (ret < ARCHIVE_OK) {
             fprintf(stderr, "%s\n", archive_error_string(arc_writer));
@@ -102,6 +127,8 @@ int extract_archive(const char* input_file) {
                 return ret;
             }
         }
+
+        free(_existing_loc);
     }
 
     archive_read_close(arc_reader);

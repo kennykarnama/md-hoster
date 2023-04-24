@@ -4,11 +4,13 @@
 #include<stdlib.h>
 #include<errno.h>
 #include"../src/archive_wrapper.h"
+#include"../src/dir_util.h"
 
 #define PORT 8080
 #define GET 0
 #define POST 1
 #define POST_BUF_SIZE 10240
+#define MD_DIR "md/out"
 
 const char *internal_error_page = "<html><body><h1>An Internal Server Error happens!</h1></body></html>";
 const char *file_already_exist = "<html><body><h1>File already exist!</h1></body></html>";
@@ -64,7 +66,7 @@ iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const 
         
         // extract
         printf("extract file: %s\n", filename);
-        int ret = extract_archive(filename);
+        int ret = extract_archive(filename, MD_DIR);
         if (ret < ARCHIVE_OK) {
             fprintf(stderr, "extract failed. remove file: %s\n", filename);
             remove(filename);
@@ -178,6 +180,14 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
 
 
 int main(int argc, char **argv) {
+
+    printf("bootstrap server assets\n");
+
+    int ret = mkdir_p(MD_DIR);
+    if (ret != 0) {
+        fprintf(stderr, "bootstrap.dir err: %s\n", strerror(errno));
+    }
+
     struct MHD_Daemon *daemon;
 
     daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, PORT, NULL, NULL, &route, NULL, 
