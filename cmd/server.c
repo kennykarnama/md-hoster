@@ -5,6 +5,7 @@
 #include<errno.h>
 #include"../src/archive_wrapper.h"
 #include"../src/dir_util.h"
+#include"../src/regex_wrapper.h"
 
 #define PORT 8080
 #define GET 0
@@ -16,6 +17,8 @@ const char *internal_error_page = "<html><body><h1>An Internal Server Error happ
 const char *file_already_exist = "<html><body><h1>File already exist!</h1></body></html>";
 const char *success_msg = "<html><body><h1>Upload success</h1></body></html>";
 const char *not_found_msg = "<html><body><h1> Page Not found<h1></body></html>";
+const char *md_view_page = "<html><body><h1>MD view page</h1></body></html>";
+char *render_route_pattern;
 
 struct connection_info {
     int connectionType;
@@ -23,6 +26,7 @@ struct connection_info {
     FILE *fp;
     const char *resp;
     int code;
+    int renderPage;
 };
 
 static enum MHD_Result
@@ -115,7 +119,7 @@ static enum MHD_Result render_response(struct MHD_Connection *conn, const char *
     return ret;
 }
 
-enum MHD_Result route(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version,
+static enum MHD_Result route(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version,
 const char *upload_data, size_t *upload_data_size, void **con_cls) {
     
     printf("received request with URL: %s\n", url);
@@ -148,7 +152,13 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
                 con_info->resp = success_msg;
             }
         }else {
-            return MHD_NO;
+            if (match(url, render_route_pattern) != 1) {
+                return MHD_NO;
+            }
+
+            con_info->connectionType = GET;
+            con_info->renderPage = 1;
+        
         }
 
         *con_cls = (void *)con_info;
@@ -172,7 +182,12 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
             ret = render_response(connection, con_info->resp, con_info->code);
             return ret;
         }
-        
+    } else if (strcmp(method, MHD_HTTP_METHOD_GET) == 0) {
+        struct connection_info *con_info = *con_cls;
+        if (con_info->renderPage) {
+            ret = render_response(connection, md_view_page, MHD_HTTP_OK);
+            return ret;
+        }
     }
 
     return MHD_NO;
@@ -187,6 +202,19 @@ int main(int argc, char **argv) {
     if (ret != 0) {
         fprintf(stderr, "bootstrap.dir err: %s\n", strerror(errno));
     }
+
+    size_t route_pattern_len = strlen(MD_DIR) + strlen("/[a-zA-Z0-9_.-]*") + 1;
+
+    render_route_pattern = (char *)malloc(route_pattern_len * sizeof(char*));
+
+    if (render_route_pattern == NULL) {
+        fprintf(stderr, "failed allocating memory for render_route_pattern\n");
+        return -1;
+    }
+
+    sprintf(render_route_pattern, "%s%s", MD_DIR, "/[a-zA-Z0-9_.-]*");
+
+    printf("route pattern: %s\n", render_route_pattern);
 
     struct MHD_Daemon *daemon;
 
@@ -203,6 +231,8 @@ int main(int argc, char **argv) {
     getchar();
 
     MHD_stop_daemon(daemon);
+
+    free(render_route_pattern);
 
     return 0;
 }
