@@ -1,3 +1,6 @@
+#ifndef DIR_UTIL_H
+#define DIR_UTIL_H
+
 #include <sys/stat.h>
 #include<errno.h>
 #include<string.h>
@@ -74,3 +77,5 @@ out:
    free(_path);
    return ret;
 }
+
+#endif

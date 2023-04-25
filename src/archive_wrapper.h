@@ -1,3 +1,6 @@
+#ifndef ARCHIVE_WRAPPER_H
+#define ARCHIVE_WRAPPER_H
+
 #include<stdio.h>
 #include<archive.h>
 #include<archive_entry.h>
@@ -159,3 +162,5 @@ int copy_data(struct archive* arc_reader, struct archive* arc_writer) {
         }
     }
 }
+
+#endif

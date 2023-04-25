@@ -1,3 +1,6 @@
+#ifndef REGEX_WRAPPER_H
+#define REGEX_WRAPPER_H
+
 #include<regex.h>
 #include<stdio.h>
 #include<stdlib.h>
@@ -52,3 +55,5 @@ get_regerror(int errcode, regex_t *rg) {
     (void) regerror(errcode, rg, rgerror_buf, len);
     return rgerror_buf;
 }
+
+#endif
