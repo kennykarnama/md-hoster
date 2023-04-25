@@ -2,16 +2,24 @@
 
 Simple markdown hoster.
 
-Upload, displays as html
+Upload tar.gz containing your markdown files and assets. Displays as html
+
+This is only my learning projects to learn more about C :D
 
 This is still WIP.
 
-## compile cli
+Feel free to use and modify.
 
-- dependencies:
+Cheers :D
 
-+ libarchive
-+ libuuid
+## compile
+
+- dependencies
+
++ https://www.libarchive.org/
++ https://sourceforge.net/projects/libuuid/
++ https://www.gnu.org/software/libmicrohttpd/
++ https://github.com/mity/md4c
 
 ```
 gcc cmd/cli.c -o bin/cli -larchive -luuid
@@ -19,15 +27,8 @@ gcc cmd/cli.c -o bin/cli -larchive -luuid
 
 ## compile server
 
-- dependencies:
-
-+ libarchive
-+ libuuid
-+ json-c (soon)
-+ microhttpd
-
 ```
-gcc cmd/server.c -o bin/server -larchive -luuid -lmicrohttpd
+gcc cmd/server.c -o bin/server -larchive -luuid -lmicrohttpd -lmd4c-html
 ```
 
 ## Uploading
@@ -43,3 +44,19 @@ ls -d -1 sample_md/* | ./cli
 It will serve HTTP on PORT 8080
 
 To terminate, simply type any character then press enter.
+
+Note:
+
+If you have successfully compiled server.c but when running you encounter message like this:
+
+```
+./bin/server: error while loading shared libraries: libmd4c-html.so.0: cannot open shared object file: No such file or directory
+```
+
+The workaround I use is to specify LD_LIBRARY_PATH to /usr/local/lib64:
+
+```
+[kenny_void@(none) md-hoster]$ LD_LIBRARY_PATH=/usr/local/lib64
+[kenny_void@(none) md-hoster]$ export LD_LIBRARY_PATH
+[kenny_void@(none) md-hoster]$ sudo ldconfig
+```
