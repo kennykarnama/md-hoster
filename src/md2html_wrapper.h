@@ -49,6 +49,8 @@ render_md_html(const char *input)
 
     struct membuffer buf_out = {0};
 
+    membuf_init(&buf_out, 1024);
+
     int ret = md_html(buf, strlen(buf), process_output, (void *)&buf_out, MD_DIALECT_GITHUB, MD_HTML_FLAG_VERBATIM_ENTITIES);
     if (ret == -1) {
         fprintf(stderr, "md_html parsed failed\n");
@@ -56,6 +58,8 @@ render_md_html(const char *input)
     }
     
     struct membuffer result = {0};
+
+    membuf_init(&result, 1024);
 
     char *tobe_rendered[] = {
         "<!DOCTYPE html>\n",
@@ -84,6 +88,9 @@ render_md_html(const char *input)
     dst[strlen(dst)-1] = '\0';
 
     printf("html: %s\n", dst);
+
+    membuf_fini(&result);
+    membuf_fini(&buf_out);
 
     return dst;
 }

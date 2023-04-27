@@ -33,18 +33,23 @@ readfile(const char *in)
     off_t end_off = lseek(fd, 0, SEEK_END);
     off_t begin_off = lseek(fd, 0, SEEK_SET);
     size_t buf_len = begin_off + end_off + 1;
-    char buf[buf_len];
+    char *buf = NULL;
+    buf = malloc(buf_len * sizeof(char));
+    if (buf == NULL) {
+        fprintf(stderr, "failed allocating for binary read\n");
+        return NULL;
+    }
+
     int n_read = read(fd, buf, buf_len);
 
     if (n_read == -1) {
         fprintf(stderr, "render_md_html.read file: %s err: %s\n", in, strerror(errno));
         return NULL;
     }
+    
     buf[buf_len-1] = '\0';
 
-    char *s_ptr = buf;
-
-    return s_ptr; 
+    return buf; 
 }
 
 struct binary_data
@@ -63,9 +68,9 @@ readfile_binary(const char *in)
 
     fstat(fd, &st);
 
-    char *buf = (char *)malloc((st.st_size + 10) * sizeof(char) );
+    char *buf = (char *)malloc((st.st_size) * sizeof(char) );
 
-    int nread = read(fd, buf, st.st_size +1);
+    int nread = read(fd, buf, st.st_size);
 
     if (nread == -1) {
         fprintf(stderr, "failed reading file: %s err: %s\n", in, strerror(errno));

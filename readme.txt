@@ -60,3 +60,25 @@ The workaround I use is to specify LD_LIBRARY_PATH to /usr/local/lib64:
 [kenny_void@(none) md-hoster]$ export LD_LIBRARY_PATH
 [kenny_void@(none) md-hoster]$ sudo ldconfig
 ```
+
+## Valgrind
+
+Version: 3.20.0
+
+```
+valgrind --leak-check=yes --track-origins=yes ./bin/server
+```
+
+Latest report
+
+```
+==30205== 
+==30205== HEAP SUMMARY:
+==30205==     in use at exit: 0 bytes in 0 blocks
+==30205==   total heap usage: 1,018 allocs, 1,018 frees, 844,804 bytes allocated
+==30205== 
+==30205== All heap blocks were freed -- no leaks are possible
+==30205== 
+==30205== For lists of detected and suppressed errors, rerun with: -s
+==30205== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+```

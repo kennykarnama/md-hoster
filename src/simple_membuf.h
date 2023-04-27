@@ -28,7 +28,7 @@ membuf_init(struct membuffer* buf, size_t new_asize)
 {
     buf->size = 0;
     buf->asize = new_asize;
-    buf->data = (char *)malloc(buf->asize);
+    buf->data = (char *)calloc(buf->asize, sizeof(char));
     if(buf->data == NULL) {
         fprintf(stderr, "membuf_init: malloc() failed.\n");
         exit(1);

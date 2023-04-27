@@ -52,6 +52,7 @@ struct connection_info {
     const char *resp;
     int code;
     int renderPage;
+    char *binary_resp;
 };
 
 static enum MHD_Result
@@ -135,7 +136,7 @@ const char *content_type, size_t content_len) {
     int ret;
     struct MHD_Response *resp;
 
-    resp = MHD_create_response_from_buffer(content_len, (void *)page, MHD_RESPMEM_PERSISTENT);
+    resp = MHD_create_response_from_buffer(content_len, (void *)page, MHD_RESPMEM_MUST_FREE);
     if (resp == NULL) {
         return MHD_NO;
     }
@@ -179,6 +180,7 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
             }
         }else {
             if (match(url, md_render_route_pattern) != 1) {
+                free(con_info);
                 return MHD_NO;
             }
 
@@ -219,7 +221,6 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
                 result = render_md_html(url + 1);
                 ctl = strlen(result);
             }else if (strstr(url, ".jpg") != NULL || strstr(url, ".jpeg") != NULL) {
-                //todo: render jpeg
                 ct = "image/jpeg";
                 struct binary_data bd = readfile_binary(url + 1);
                 ctl = bd.len;
@@ -233,6 +234,10 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
             }
             ret = render_response(connection, result, MHD_HTTP_OK, ct, ctl);
             return ret;
+        }else {
+              ret = render_response(connection, internal_error_page, MHD_HTTP_NOT_FOUND, 
+                "text/html", strlen(not_found_msg));
+                return ret;
         }
     }
 
@@ -262,7 +267,7 @@ int main(int argc, char **argv) {
 
     printf("route pattern: %s\n", md_render_route_pattern);
 
-    server = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, PORT, NULL, NULL, &route, NULL, 
+    server = MHD_start_daemon(MHD_USE_DEBUG | MHD_USE_INTERNAL_POLLING_THREAD, PORT, NULL, NULL, &route, NULL, 
                               MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL, MHD_OPTION_END);
 
     if (server == NULL) {
