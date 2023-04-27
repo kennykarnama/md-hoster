@@ -3,6 +3,8 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<errno.h>
+#include<unistd.h>
+#include<signal.h>
 #include"../src/archive_wrapper.h"
 #include"../src/dir_util.h"
 #include"../src/regex_wrapper.h"
@@ -15,12 +17,33 @@
 #define POST_BUF_SIZE 10240
 #define MD_DIR "md/out"
 
+struct MHD_Daemon *server = NULL;
+
 const char *internal_error_page = "<html><body><h1>An Internal Server Error happens!</h1></body></html>";
 const char *file_already_exist = "<html><body><h1>File already exist!</h1></body></html>";
 const char *success_msg = "<html><body><h1>Upload success</h1></body></html>";
 const char *not_found_msg = "<html><body><h1> Page Not found<h1></body></html>";
 const char *md_view_page = "<html><body><h1>MD view page</h1></body></html>";
-char *md_render_route_pattern;
+char *md_render_route_pattern = NULL;
+
+
+static void
+signal_handler(int sig)
+{
+    if (sig == SIGINT) {
+        
+        printf("SIGINT received\n");
+
+        if (server != NULL) {
+            printf("stopping server daemon...\n");
+            MHD_stop_daemon(server);
+        }
+
+        free(md_render_route_pattern);
+
+        exit(EXIT_SUCCESS);
+    }
+}
 
 struct connection_info {
     int connectionType;
@@ -239,23 +262,23 @@ int main(int argc, char **argv) {
 
     printf("route pattern: %s\n", md_render_route_pattern);
 
-    struct MHD_Daemon *daemon;
-
-    daemon = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, PORT, NULL, NULL, &route, NULL, 
+    server = MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, PORT, NULL, NULL, &route, NULL, 
                               MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL, MHD_OPTION_END);
 
-    if (daemon == NULL) {
+    if (server == NULL) {
         fprintf(stderr, "unable to initialize mhd daemon\n");
         return -1;
     }
 
     printf("starting server on port: %d\n", PORT);
 
-    getchar();
+    if (signal(SIGINT, signal_handler)) {
+        return 0;
+    }
 
-    MHD_stop_daemon(daemon);
-
-    free(md_render_route_pattern);
+    for (;;) {
+        pause();
+    }
 
     return 0;
 }
