@@ -16,7 +16,7 @@
 #define GET 0
 #define POST 1
 #define POST_BUF_SIZE 10240
-#define MD_DIR "md/out"
+#define MD_DIR "/tmp/md/out"
 
 struct MHD_Daemon *server = NULL;
 
