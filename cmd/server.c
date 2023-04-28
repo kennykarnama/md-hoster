@@ -10,8 +10,9 @@
 #include"../src/regex_wrapper.h"
 #include"../src/md2html_wrapper.h"
 #include"../src/file_util.h"
+#include"../src/convert_util.h"
 
-#define PORT 8080
+#define PORT "8080"
 #define GET 0
 #define POST 1
 #define POST_BUF_SIZE 10240
@@ -267,7 +268,19 @@ int main(int argc, char **argv) {
 
     printf("route pattern: %s\n", md_render_route_pattern);
 
-    server = MHD_start_daemon(MHD_USE_DEBUG | MHD_USE_INTERNAL_POLLING_THREAD, PORT, NULL, NULL, &route, NULL, 
+    char *env_port = getenv("PORT");
+    if (env_port == NULL) {
+        env_port = PORT;
+    }
+
+    uint16_t port = 0;
+    if (!str_to_uint16((const char*)env_port, &port)){
+        fprintf(stderr, "failed to parse port\n");
+        return -1;
+    }
+
+
+    server = MHD_start_daemon(MHD_USE_DEBUG | MHD_USE_INTERNAL_POLLING_THREAD, port, NULL, NULL, &route, NULL, 
                               MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL, MHD_OPTION_END);
 
     if (server == NULL) {
@@ -275,7 +288,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    printf("starting server on port: %d\n", PORT);
+    printf("starting server on port: %d\n", port);
 
     if (signal(SIGINT, signal_handler)) {
         return 0;
