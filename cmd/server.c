@@ -86,6 +86,7 @@ iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const 
     }
 
     if (size > 0) {
+        fprintf(stderr, "size: %d\n", size);
         int nwrite = fwrite(data, size, sizeof(char), con_info->fp);
         if (!nwrite) {
             fprintf(stderr, "failed to write file\n");
