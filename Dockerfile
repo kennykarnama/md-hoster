@@ -30,4 +30,4 @@ ENV LD_LIBRARY_PATH=/usr/local/lib64
 
 RUN ldconfig
 
-CMD [ "bin/server" ]
+CMD [ "./bin/server" ]

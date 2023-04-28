@@ -100,7 +100,7 @@ iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const 
         int ret = extract_archive(filename, MD_DIR);
         if (ret < ARCHIVE_OK) {
             fprintf(stderr, "extract failed. remove file: %s\n", filename);
-            remove(filename);
+            //remove(filename);
             return MHD_NO;
         }
     }
