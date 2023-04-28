@@ -26,4 +26,8 @@ RUN mkdir bin
 
 RUN gcc cmd/server.c -o bin/server -larchive -luuid -lmicrohttpd -lmd4c-html
 
+ENV LD_LIBRARY_PATH=/usr/local/lib64
+
+RUN ldconfig
+
 CMD [ "bin/server" ]

@@ -136,7 +136,7 @@ const char *content_type, size_t content_len) {
     int ret;
     struct MHD_Response *resp;
 
-    resp = MHD_create_response_from_buffer(content_len, (void *)page, MHD_RESPMEM_MUST_FREE);
+    resp = MHD_create_response_from_buffer(content_len, (void *)page, MHD_RESPMEM_PERSISTENT);
     if (resp == NULL) {
         return MHD_NO;
     }
