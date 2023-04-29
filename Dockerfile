@@ -22,12 +22,10 @@ RUN wget https://github.com/mity/md4c/archive/refs/tags/release-0.4.8.tar.gz && 
 
 RUN cd ./md4c-release-0.4.8 && mkdir build && cd build && cmake .. && make && make install
 
-RUN mkdir bin
-
-RUN gcc cmd/server.c -o bin/server -larchive -luuid -lmicrohttpd -lmd4c-html
+RUN mkdir bin && gcc cmd/server.c -o bin/server -larchive -luuid -lmicrohttpd -lmd4c-html
 
 ENV LD_LIBRARY_PATH=/usr/local/lib64
 
 RUN ldconfig
 
-CMD [ "bin/server" ]
+CMD [ "./bin/server" ]

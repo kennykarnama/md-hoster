@@ -10,11 +10,12 @@
 #include"../src/regex_wrapper.h"
 #include"../src/md2html_wrapper.h"
 #include"../src/file_util.h"
+#include"../src/convert_util.h"
 
-#define PORT 8080
+#define PORT "8080"
 #define GET 0
 #define POST 1
-#define POST_BUF_SIZE 10240
+#define POST_BUF_SIZE 512
 #define MD_DIR "md/out"
 
 struct MHD_Daemon *server = NULL;
@@ -52,7 +53,7 @@ struct connection_info {
     const char *resp;
     int code;
     int renderPage;
-    char *binary_resp;
+    char *filename;
 };
 
 static enum MHD_Result
@@ -77,29 +78,22 @@ iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const 
             return MHD_NO;
         }
 
-        con_info->fp = fopen(filename, "wb");
+        con_info->fp = fopen(filename, "ab");
         if (con_info->fp == NULL) {
             fprintf(stderr, "failed opening: %s err: %s\n", filename, strerror(errno));
             return MHD_NO;
         }
+        con_info->filename = calloc(strlen(filename), sizeof(char));
+        strcpy(con_info->filename, filename);
     }
 
+    fprintf(stderr, "size: %d\n", size);
+    
     if (size > 0) {
+        
         int nwrite = fwrite(data, size, sizeof(char), con_info->fp);
         if (!nwrite) {
             fprintf(stderr, "failed to write file\n");
-            return MHD_NO;
-        }
-        fflush(con_info->fp);
-        fclose(con_info->fp);
-        con_info->fp = NULL;
-        
-        // extract
-        printf("extract file: %s\n", filename);
-        int ret = extract_archive(filename, MD_DIR);
-        if (ret < ARCHIVE_OK) {
-            fprintf(stderr, "extract failed. remove file: %s\n", filename);
-            remove(filename);
             return MHD_NO;
         }
     }
@@ -121,9 +115,14 @@ request_completed(void *cls, struct MHD_Connection *connection, void **conn_cls,
     if (con_info->connectionType == POST) {
         if (con_info->fp != NULL) {
             fclose(con_info->fp);
+            con_info->fp = NULL;
         }
         if (con_info->postProcessor != NULL) {
             MHD_destroy_post_processor(con_info->postProcessor);
+        }
+        if (con_info->filename != NULL) {
+            free(con_info->filename);
+            con_info->filename = NULL;
         }
     }
 
@@ -159,6 +158,9 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
 
     if (*con_cls == NULL) {
         struct connection_info *con_info = malloc(sizeof (struct connection_info));
+        con_info->fp = NULL;
+        con_info->postProcessor = NULL;
+        con_info->filename = NULL;
 
         if (con_info == NULL) {
             fprintf(stderr, "failed allocating");
@@ -199,13 +201,23 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
     if (strcmp(method, MHD_HTTP_METHOD_POST) == 0 && strcmp(url, "/upload") == 0) {
         struct connection_info *con_info = *con_cls;
         if (*upload_data_size > 0) {
-            MHD_post_process(con_info->postProcessor, upload_data, *upload_data_size);
+            enum MHD_Result res = MHD_post_process(con_info->postProcessor, upload_data, *upload_data_size);
+            printf("post_process.... result: %d\n", res);
             *upload_data_size = 0;
             return MHD_YES;
         }else {
             if (con_info->fp != NULL) {
+                fflush(con_info->fp);
                 fclose(con_info->fp);
                 con_info->fp = NULL;
+                // extract
+                printf("extract file: %s\n", con_info->filename);
+                int ret = extract_archive(con_info->filename, MD_DIR);
+                if (ret < ARCHIVE_OK) {
+                   fprintf(stderr, "extract failed. remove file: %s\n", con_info->filename);
+                   remove(con_info->filename);
+                   return MHD_NO;
+                }
             }
             ret = render_response(connection, con_info->resp, con_info->code, "text/html", strlen(con_info->resp));
             return ret;
@@ -241,7 +253,9 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
         }
     }
 
-    return MHD_NO;
+    return render_response(connection, internal_error_page, MHD_HTTP_NOT_FOUND, 
+                "text/html", strlen(internal_error_page));
+                return ret;
 }
 
 
@@ -267,7 +281,19 @@ int main(int argc, char **argv) {
 
     printf("route pattern: %s\n", md_render_route_pattern);
 
-    server = MHD_start_daemon(MHD_USE_DEBUG | MHD_USE_INTERNAL_POLLING_THREAD, PORT, NULL, NULL, &route, NULL, 
+    char *env_port = getenv("PORT");
+    if (env_port == NULL) {
+        env_port = PORT;
+    }
+
+    uint16_t port = 0;
+    if (!str_to_uint16((const char*)env_port, &port)){
+        fprintf(stderr, "failed to parse port\n");
+        return -1;
+    }
+
+
+    server = MHD_start_daemon(MHD_USE_DEBUG | MHD_USE_INTERNAL_POLLING_THREAD, port, NULL, NULL, &route, NULL, 
                               MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL, MHD_OPTION_END);
 
     if (server == NULL) {
@@ -275,7 +301,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    printf("starting server on port: %d\n", PORT);
+    printf("starting server on port: %d\n", port);
 
     if (signal(SIGINT, signal_handler)) {
         return 0;
