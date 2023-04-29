@@ -1,4 +1,5 @@
-# *.tar.gz
-# sample*
-# bin/
+*.tar.gz
+sample*
+bin/
 .vscode/
+md/*

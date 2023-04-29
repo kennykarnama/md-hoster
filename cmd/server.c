@@ -113,7 +113,6 @@ request_completed(void *cls, struct MHD_Connection *connection, void **conn_cls,
     }
 
     if (con_info->connectionType == POST) {
-        printf("cleaningg\n");
         if (con_info->fp != NULL) {
             fclose(con_info->fp);
             con_info->fp = NULL;
