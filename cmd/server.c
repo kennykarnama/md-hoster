@@ -113,6 +113,7 @@ request_completed(void *cls, struct MHD_Connection *connection, void **conn_cls,
     }
 
     if (con_info->connectionType == POST) {
+        printf("cleaningg\n");
         if (con_info->fp != NULL) {
             fclose(con_info->fp);
             con_info->fp = NULL;
@@ -157,6 +158,7 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
     int http_status;
 
     if (*con_cls == NULL) {
+        printf("wuhuu\n");
         struct connection_info *con_info = malloc(sizeof (struct connection_info));
         con_info->fp = NULL;
         con_info->postProcessor = NULL;
