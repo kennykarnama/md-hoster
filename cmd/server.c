@@ -113,13 +113,15 @@ request_completed(void *cls, struct MHD_Connection *connection, void **conn_cls,
     }
 
     if (con_info->connectionType == POST) {
+        printf("cleaningg\n");
         if (con_info->fp != NULL) {
             fclose(con_info->fp);
+            con_info->fp = NULL;
         }
         if (con_info->postProcessor != NULL) {
             MHD_destroy_post_processor(con_info->postProcessor);
         }
-        if (con_info->filename) {
+        if (con_info->filename != NULL) {
             free(con_info->filename);
             con_info->filename = NULL;
         }
@@ -156,7 +158,11 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
     int http_status;
 
     if (*con_cls == NULL) {
+        printf("wuhuu\n");
         struct connection_info *con_info = malloc(sizeof (struct connection_info));
+        con_info->fp = NULL;
+        con_info->postProcessor = NULL;
+        con_info->filename = NULL;
 
         if (con_info == NULL) {
             fprintf(stderr, "failed allocating");
@@ -197,7 +203,8 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
     if (strcmp(method, MHD_HTTP_METHOD_POST) == 0 && strcmp(url, "/upload") == 0) {
         struct connection_info *con_info = *con_cls;
         if (*upload_data_size > 0) {
-            MHD_post_process(con_info->postProcessor, upload_data, *upload_data_size);
+            enum MHD_Result res = MHD_post_process(con_info->postProcessor, upload_data, *upload_data_size);
+            printf("post_process.... result: %d\n", res);
             *upload_data_size = 0;
             return MHD_YES;
         }else {
@@ -248,7 +255,9 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
         }
     }
 
-    return MHD_NO;
+    return render_response(connection, internal_error_page, MHD_HTTP_NOT_FOUND, 
+                "text/html", strlen(internal_error_page));
+                return ret;
 }
 
 
