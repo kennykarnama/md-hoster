@@ -17,6 +17,7 @@
 #define POST 1
 #define POST_BUF_SIZE 512
 #define MD_DIR "md/out"
+#define IDX_PAGE "me/howdy.md"
 
 struct MHD_Daemon *server = NULL;
 
@@ -54,6 +55,7 @@ struct connection_info {
     int code;
     int renderPage;
     char *filename;
+    int renderIdxPage;
 };
 
 static enum MHD_Result
@@ -181,14 +183,15 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
                 con_info->resp = success_msg;
             }
         }else {
-            if (match(url, md_render_route_pattern) != 1) {
+            if (strcmp(url, "/") == 0) {
+                con_info->renderIdxPage = 1;
+            } else if (match(url, md_render_route_pattern) == 1 || strstr(url, ".jpg") != NULL || strstr(url, ".jpeg") != NULL) {
+                con_info->renderPage = 1;
+            } else {
                 free(con_info);
                 return MHD_NO;
             }
-
             con_info->connectionType = GET;
-            con_info->renderPage = 1;
-        
         }
 
         *con_cls = (void *)con_info;
@@ -224,7 +227,7 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
         }
     } else if (strcmp(method, MHD_HTTP_METHOD_GET) == 0) {
         struct connection_info *con_info = *con_cls;
-        if (con_info->renderPage) {
+        if (con_info->renderPage || con_info->renderIdxPage) {
             char *result = NULL;
             char *ct = "text/html";
             size_t ctl = 0;
@@ -237,6 +240,9 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
                 struct binary_data bd = readfile_binary(url + 1);
                 ctl = bd.len;
                 result = bd.content;
+            }else {
+                result = render_md_html(IDX_PAGE);
+                ctl = strlen(result);
             }
             
             if (result == NULL) {
