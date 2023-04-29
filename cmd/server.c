@@ -83,9 +83,8 @@ iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const 
             fprintf(stderr, "failed opening: %s err: %s\n", filename, strerror(errno));
             return MHD_NO;
         }
-        con_info->filename = calloc(strlen(filename) + 1, sizeof(char));
+        con_info->filename = calloc(strlen(filename), sizeof(char));
         strcpy(con_info->filename, filename);
-        con_info->filename[strlen(filename)] = '\0';
     }
 
     fprintf(stderr, "size: %d\n", size);
@@ -135,7 +134,7 @@ const char *content_type, size_t content_len) {
     int ret;
     struct MHD_Response *resp;
 
-    resp = MHD_create_response_from_buffer(content_len, (void *)page, MHD_RESPMEM_MUST_FREE);
+    resp = MHD_create_response_from_buffer(content_len, (void *)page, MHD_RESPMEM_PERSISTENT);
     if (resp == NULL) {
         return MHD_NO;
     }
