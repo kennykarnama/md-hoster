@@ -15,7 +15,7 @@
 #define PORT "8080"
 #define GET 0
 #define POST 1
-#define POST_BUF_SIZE 10240
+#define POST_BUF_SIZE 512
 #define MD_DIR "md/out"
 
 struct MHD_Daemon *server = NULL;
@@ -53,7 +53,7 @@ struct connection_info {
     const char *resp;
     int code;
     int renderPage;
-    char *binary_resp;
+    char *filename;
 };
 
 static enum MHD_Result
@@ -78,30 +78,23 @@ iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const 
             return MHD_NO;
         }
 
-        con_info->fp = fopen(filename, "wb");
+        con_info->fp = fopen(filename, "ab");
         if (con_info->fp == NULL) {
             fprintf(stderr, "failed opening: %s err: %s\n", filename, strerror(errno));
             return MHD_NO;
         }
+        con_info->filename = calloc(strlen(filename) + 1, sizeof(char));
+        strcpy(con_info->filename, filename);
+        con_info->filename[strlen(filename)] = '\0';
     }
 
+    fprintf(stderr, "size: %d\n", size);
+    
     if (size > 0) {
-        fprintf(stderr, "size: %d\n", size);
+        
         int nwrite = fwrite(data, size, sizeof(char), con_info->fp);
         if (!nwrite) {
             fprintf(stderr, "failed to write file\n");
-            return MHD_NO;
-        }
-        fflush(con_info->fp);
-        fclose(con_info->fp);
-        con_info->fp = NULL;
-        
-        // extract
-        printf("extract file: %s\n", filename);
-        int ret = extract_archive(filename, MD_DIR);
-        if (ret < ARCHIVE_OK) {
-            fprintf(stderr, "extract failed. remove file: %s\n", filename);
-            //remove(filename);
             return MHD_NO;
         }
     }
@@ -127,6 +120,10 @@ request_completed(void *cls, struct MHD_Connection *connection, void **conn_cls,
         if (con_info->postProcessor != NULL) {
             MHD_destroy_post_processor(con_info->postProcessor);
         }
+        if (con_info->filename) {
+            free(con_info->filename);
+            con_info->filename = NULL;
+        }
     }
 
     free(con_info);
@@ -138,7 +135,7 @@ const char *content_type, size_t content_len) {
     int ret;
     struct MHD_Response *resp;
 
-    resp = MHD_create_response_from_buffer(content_len, (void *)page, MHD_RESPMEM_PERSISTENT);
+    resp = MHD_create_response_from_buffer(content_len, (void *)page, MHD_RESPMEM_MUST_FREE);
     if (resp == NULL) {
         return MHD_NO;
     }
@@ -206,8 +203,17 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
             return MHD_YES;
         }else {
             if (con_info->fp != NULL) {
+                fflush(con_info->fp);
                 fclose(con_info->fp);
                 con_info->fp = NULL;
+                // extract
+                printf("extract file: %s\n", con_info->filename);
+                int ret = extract_archive(con_info->filename, MD_DIR);
+                if (ret < ARCHIVE_OK) {
+                   fprintf(stderr, "extract failed. remove file: %s\n", con_info->filename);
+                   remove(con_info->filename);
+                   return MHD_NO;
+                }
             }
             ret = render_response(connection, con_info->resp, con_info->code, "text/html", strlen(con_info->resp));
             return ret;
