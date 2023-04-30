@@ -2,15 +2,59 @@
 
 Simple markdown hoster.
 
-Upload tar.gz containing your markdown files and assets. Displays as html
+Upload tar.gz containing your markdown files and assets. Displays as html.
 
 This is only my learning projects to learn more about C :D
-
-This is still WIP.
 
 Feel free to use and modify.
 
 Cheers :D
+
+FYI:
+
+This project (repo) is used for my personal website (https://www.kokobow.fun)
+
+So please expects you will find unrelated things:
+
+- me/ (holds welcoming page)
+- heroku.yml (for my personal website deployment platform)
+
+## How to use
+
+prerequisite: Compile cli & server (please go to section #compile)
+
+Suppose you have directory with the following structures
+
+```
++ pages /
+  + index.md
+  + page1.md
+```
+
+Archive it first using provided cli binary (see section #Uploading)
+
+It will output the file in format [uuid].tar.gz
+
+Upload your files, use postman collection provided in misc/postman_collection.json
+
+
+Once upload done, server will store your tar.gz and extract the archives to
+
+```
+md/out/[your_file].tar.gz/
+```
+
+To access your site, simply go to:
+
+```
+[base_url]/md/out/test.tar.gz/index.md
+```
+
+Note:
+
+Server doesn't save any states of uploading files.
+
+So if you deploy in a platform that uses ephemeral storage, your uploaded files will be lost if you reboot the server
 
 ## compile
 

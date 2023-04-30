@@ -1,4 +1,5 @@
 - extract to directory named with /[const-prefix]/[tar file] (done)
 - create routes to view based on /[const-pprefix] to view rendered md (done)
-- json resp for upload
-- valgrind
+- valgrind (done)
+- code refactoring
+- unifying scripts (i.e. Makefile to up & running the project)
