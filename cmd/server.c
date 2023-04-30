@@ -17,6 +17,7 @@
 #define POST 1
 #define POST_BUF_SIZE 512
 #define MD_DIR "md/out"
+#define IDX_PAGE "me/howdy.md"
 
 struct MHD_Daemon *server = NULL;
 
@@ -24,6 +25,7 @@ const char *internal_error_page = "<html><body><h1>An Internal Server Error happ
 const char *file_already_exist = "<html><body><h1>File already exist!</h1></body></html>";
 const char *success_msg = "<html><body><h1>Upload success</h1></body></html>";
 const char *not_found_msg = "<html><body><h1> Page Not found<h1></body></html>";
+const char *bad_req_msg = "<html><body><h1> Bad request<h1></body></html>";
 const char *md_view_page = "<html><body><h1>MD view page</h1></body></html>";
 char *md_render_route_pattern = NULL;
 
@@ -54,6 +56,8 @@ struct connection_info {
     int code;
     int renderPage;
     char *filename;
+    int renderIdxPage;
+    char *binaryData; // clear on request completed callback
 };
 
 static enum MHD_Result
@@ -67,6 +71,9 @@ iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const 
     con_info->resp = internal_error_page;
 
     if (strcmp(key, "file") != 0) {
+        printf("key.file not found");
+        con_info->code = MHD_HTTP_BAD_REQUEST;
+        con_info->resp = bad_req_msg;
         return MHD_NO;
     }
 
@@ -75,6 +82,7 @@ iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const 
         if (fp != NULL) {
             fclose(fp);
             con_info->resp = file_already_exist;
+            con_info->code = MHD_HTTP_BAD_REQUEST;
             return MHD_NO;
         }
 
@@ -86,8 +94,6 @@ iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const 
         con_info->filename = calloc(strlen(filename), sizeof(char));
         strcpy(con_info->filename, filename);
     }
-
-    fprintf(stderr, "size: %d\n", size);
     
     if (size > 0) {
         
@@ -126,6 +132,11 @@ request_completed(void *cls, struct MHD_Connection *connection, void **conn_cls,
         }
     }
 
+    if (con_info->binaryData != NULL) {
+        free(con_info->binaryData);
+        con_info->binaryData = NULL;
+    }
+
     free(con_info);
     *conn_cls = NULL;
 }
@@ -135,7 +146,7 @@ const char *content_type, size_t content_len) {
     int ret;
     struct MHD_Response *resp;
 
-    resp = MHD_create_response_from_buffer(content_len, (void *)page, MHD_RESPMEM_PERSISTENT);
+    resp = MHD_create_response_from_buffer(content_len, (void *)page, MHD_RESPMEM_MUST_COPY);
     if (resp == NULL) {
         return MHD_NO;
     }
@@ -161,6 +172,7 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
         con_info->fp = NULL;
         con_info->postProcessor = NULL;
         con_info->filename = NULL;
+        con_info->binaryData = NULL;
 
         if (con_info == NULL) {
             fprintf(stderr, "failed allocating");
@@ -173,22 +185,26 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
                 con_info->postProcessor = MHD_create_post_processor(connection, POST_BUF_SIZE, iterate_post, (void *)con_info);
             
                 if (con_info->postProcessor == NULL) {
+                 printf("postProcessor creation failed\n");
                  free(con_info);
-                 return MHD_NO;
+                 return render_response(connection, bad_req_msg, MHD_HTTP_BAD_REQUEST, 
+                "text/html", strlen(bad_req_msg));
                 }
 
                 con_info->code = MHD_HTTP_CREATED;
                 con_info->resp = success_msg;
             }
         }else {
-            if (match(url, md_render_route_pattern) != 1) {
+            if (strcmp(url, "/") == 0) {
+                con_info->renderIdxPage = 1;
+            } else if (match(url, md_render_route_pattern) == 1 || strstr(url, ".jpg") != NULL || strstr(url, ".jpeg") != NULL) {
+                con_info->renderPage = 1;
+            } else {
                 free(con_info);
-                return MHD_NO;
+                return render_response(connection, not_found_msg, MHD_HTTP_NOT_FOUND, 
+                "text/html", strlen(not_found_msg));
             }
-
             con_info->connectionType = GET;
-            con_info->renderPage = 1;
-        
         }
 
         *con_cls = (void *)con_info;
@@ -196,8 +212,6 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
         return MHD_YES;
     }
 
-
-    
     if (strcmp(method, MHD_HTTP_METHOD_POST) == 0 && strcmp(url, "/upload") == 0) {
         struct connection_info *con_info = *con_cls;
         if (*upload_data_size > 0) {
@@ -224,19 +238,37 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
         }
     } else if (strcmp(method, MHD_HTTP_METHOD_GET) == 0) {
         struct connection_info *con_info = *con_cls;
-        if (con_info->renderPage) {
+        if (con_info->renderPage || con_info->renderIdxPage) {
             char *result = NULL;
             char *ct = "text/html";
             size_t ctl = 0;
 
             if (strstr(url, ".md") != NULL) {
                 result = render_md_html(url + 1);
+                if (result == NULL) {
+                   return render_response(connection, not_found_msg, MHD_HTTP_NOT_FOUND, 
+                     "text/html", strlen(not_found_msg));
+                }
                 ctl = strlen(result);
+                con_info->binaryData = result;
             }else if (strstr(url, ".jpg") != NULL || strstr(url, ".jpeg") != NULL) {
                 ct = "image/jpeg";
                 struct binary_data bd = readfile_binary(url + 1);
+                if (bd.content == NULL) {
+                     return render_response(connection, not_found_msg, MHD_HTTP_NOT_FOUND, 
+                     "text/html", strlen(not_found_msg));
+                }
                 ctl = bd.len;
                 result = bd.content;
+                con_info->binaryData= bd.content;
+            }else {
+                result = render_md_html(IDX_PAGE);
+                if (result == NULL) {
+                   return render_response(connection, not_found_msg, MHD_HTTP_NOT_FOUND, 
+                     "text/html", strlen(not_found_msg));
+                }
+                ctl = strlen(result);
+                con_info->binaryData = result;
             }
             
             if (result == NULL) {
@@ -247,7 +279,7 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
             ret = render_response(connection, result, MHD_HTTP_OK, ct, ctl);
             return ret;
         }else {
-              ret = render_response(connection, internal_error_page, MHD_HTTP_NOT_FOUND, 
+              ret = render_response(connection, not_found_msg, MHD_HTTP_NOT_FOUND, 
                 "text/html", strlen(not_found_msg));
                 return ret;
         }
@@ -255,7 +287,6 @@ const char *upload_data, size_t *upload_data_size, void **con_cls) {
 
     return render_response(connection, internal_error_page, MHD_HTTP_NOT_FOUND, 
                 "text/html", strlen(internal_error_page));
-                return ret;
 }
 
 

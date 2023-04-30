@@ -117,8 +117,6 @@ int extract_archive(const char* input_file, const char* output_dir) {
             return ret;
         }
 
-        printf("overiding entry loc from: %s to: %s\n", _existing_loc, output_loc);
-
         archive_entry_set_pathname(entry, output_loc);
 
         ret = archive_write_header(arc_writer, entry);

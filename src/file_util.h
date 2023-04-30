@@ -26,7 +26,7 @@ readfile(const char *in)
     int fd;
     fd = open(in, O_RDONLY);
     if (fd == -1) {
-        fprintf(stderr, "render_md_html.open file: %s err: %s\n", in, strerror(errno));
+        fprintf(stderr, "read_file.open file: %s err: %s\n", in, strerror(errno));
         return NULL;
     }
 
@@ -58,6 +58,8 @@ readfile_binary(const char *in)
     struct stat st;
 
     struct binary_data bd;
+    bd.content = NULL;
+    bd.len = 0;
 
     int fd = open(in, O_RDONLY);
 

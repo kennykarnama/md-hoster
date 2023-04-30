@@ -82,12 +82,10 @@ render_md_html(const char *input)
             membuf_append(&result, tobe_rendered[iter], strlen(tobe_rendered[iter]));
         }
     }
-
+    
     char *dst = malloc(strlen(result.data) + 1);
     strcpy(dst, result.data);
     dst[strlen(dst)-1] = '\0';
-
-    printf("html: %s\n", dst);
 
     membuf_fini(&result);
     membuf_fini(&buf_out);
